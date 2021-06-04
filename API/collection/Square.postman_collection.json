@@ -1,0 +1,808 @@
+{
+	"info": {
+		"_postman_id": "4b064bd8-2df3-4a8f-8a01-9237624a32cb",
+		"name": "Square",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Payments Project",
+			"item": [
+				{
+					"name": "CreatePayment",
+					"item": [
+						{
+							"name": "Create Simple Payment",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"var randomUUID = pm.variables.replaceIn('{{$randomUUID}}');",
+											"var randomPaymentAmount = pm.variables.replaceIn('{{$randomInt}}');",
+											"",
+											"pm.collectionVariables.set(\"idempotency\",randomUUID);",
+											"",
+											"//console.log(randomUUID);",
+											"",
+											"pm.collectionVariables.set(\"amount\",randomPaymentAmount);",
+											"",
+											"//console.log(randomPaymentAmount);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentJSONResponse = pm.response.json();",
+											"",
+											"pm.collectionVariables.set(\"paymentID\",paymentJSONResponse.payment.id);",
+											"",
+											"pm.test(\"Amount in the response is the same as in the request\", function(){",
+											"    pm.expect(paymentJSONResponse.payment.amount_money.amount).to.eql(parseInt(pm.collectionVariables.get(\"amount\")));",
+											"})",
+											"",
+											"pm.test(\"Currency type in the response is the same as in the request\", function(){",
+											"    pm.expect(paymentJSONResponse.payment.amount_money.currency).to.eql(pm.collectionVariables.get(\"currency\"));",
+											"})",
+											"",
+											"pm.test(\"Validate schema\", () => {",
+											"            pm.response.to.have.jsonSchema(paymentJSONResponse);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Square-Version",
+										"value": "2021-05-13",
+										"type": "text",
+										"disabled": true
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"amount_money\": {\n        \"amount\": {{amount}},\n        \"currency\": \"USD\"\n    },\n    \"idempotency_key\": \"{{$randomUUID}}\",\n    \"source_id\": \"cnon:card-nonce-ok\",\n    \"autocomplete\": false\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative - Create Cash Payment Failure",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"var randomUUID = pm.variables.replaceIn('{{$randomUUID}}');"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentFJSONResponse = pm.response.json();",
+											"",
+											"pm.test(\"Payment Failure when source_id: CASH and accept_partial_authorization: true\", function(){",
+											"    ",
+											"    //console.log(paymentFJSONResponse.errors[0].detail);",
+											"    ",
+											"    pm.expect(paymentFJSONResponse.errors[0].detail).to.eql(pm.collectionVariables.get(\"paymentErrorMsg\"));",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Square-Version",
+										"value": "2021-05-13",
+										"type": "text",
+										"disabled": true
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"amount_money\": {\n        \"amount\": 100,\n        \"currency\": \"USD\"\n    },\n        \"tip_money\": {\n        \"amount\": 50,\n        \"currency\": \"USD\"\n    },\n    \"cash_details\": {\n        \"buyer_supplied_money\": {\n            \"amount\": 200,\n            \"currency\": \"USD\"\n        }\n    },\n        \"idempotency_key\": \"{{$randomUUID}}\",\n    \"source_id\": \"CASH\",\n    \"accept_partial_authorization\": true\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Get a Payment",
+					"item": [
+						{
+							"name": "Get specific Payment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var getPaymentJSONResponse = pm.response.json();",
+											"",
+											"pm.test(\"ID shown in the response matches with the requested\", function(){",
+											"    pm.expect(getPaymentJSONResponse.payment.id).to.eql(pm.collectionVariables.get(\"paymentID\"));",
+											"})",
+											"",
+											"pm.test(\"Content-Type header is application/json\", () => {",
+											"  pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/json');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}/{{paymentID}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}",
+										"{{paymentID}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get List of Payments",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative - Send wrong Payment ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentFJSONResponse = pm.response.json();",
+											"",
+											"pm.test(\"Negative scenario where wrong payment ID is sent expecting a failuere message\", function(){",
+											"    pm.response.to.have.status(404);",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}/{{paymentID}}a",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}",
+										"{{paymentID}}a"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Update a Payment",
+					"item": [
+						{
+							"name": "Update a Specific Payment",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"var originalamount = pm.collectionVariables.get(\"amount\");",
+											"var randomtip = _.random(1,50);",
+											"",
+											"//console.log(originalamount);",
+											"",
+											"pm.collectionVariables.set(\"originalPayment\",originalamount);",
+											"",
+											"pm.collectionVariables.set(\"tip\", randomtip);",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentJSONResponse = pm.response.json();",
+											"var updatedPaymentAmount = parseInt(pm.collectionVariables.get(\"originalPayment\")) + parseInt(pm.collectionVariables.get(\"tip\"));",
+											"",
+											"pm.test(\"Updated amount of money is the sum of original amount + tip\", function(){",
+											"    pm.expect(paymentJSONResponse.payment.total_money.amount).to.eql(updatedPaymentAmount);",
+											"})",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idempotency_key\": \"{{idempotency}}\",\n    \"payment\": {\n        \"tip_money\": {\n            \"amount\": {{tip}},\n            \"currency\": \"USD\"\n        }\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}/{{paymentID}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}",
+										"{{paymentID}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Cancel a Payment",
+					"item": [
+						{
+							"name": "Cancel Payment by ID",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}/{{paymentID}}/cancel",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}",
+										"{{paymentID}}",
+										"cancel"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative - Cancel Payment by Wrong ID",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"var allowed = \"0a1b2c3d4e5f6g7h8i9jklmnopqrs\";",
+											"var shuffled_unique_str = allowed.split('').sort(function(){return 0.5-Math.random()}).join('');",
+											"",
+											"console.log(shuffled_unique_str)",
+											"",
+											"pm.collectionVariables.set(\"wrongID\",shuffled_unique_str);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentFJSONResponse = pm.response.json();",
+											"var wrongPaymentID = \"Could not find payment with id: \" + pm.collectionVariables.get(\"wrongID\");",
+											"",
+											"pm.test(\"Negative scenario when canceling a non existing payment\", function(){",
+											"    pm.expect(paymentFJSONResponse.errors[0].detail).to.eql(wrongPaymentID);",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}/{{wrongID}}/cancel",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}",
+										"{{wrongID}}",
+										"cancel"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Complete a Payment",
+					"item": [
+						{
+							"name": "Complete Specific Payment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentJSONResponse = pm.response.json();",
+											"",
+											"pm.test(\"Payment with id: \" + paymentJSONResponse.payment.id + \"successfully completed\", function(){",
+											"    pm.expect(paymentJSONResponse.payment.status).to.eql(\"COMPLETED\");",
+											"})",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}/{{paymentID}}/complete",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}",
+										"{{paymentID}}",
+										"complete"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative - Try to complete a wrong Payment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentFJSONResponse = pm.response.json();",
+											"",
+											"pm.test(\"Negative scenario where wrong payment ID is sent expecting a failuere message\", function(){",
+											"    pm.response.to.have.status(404);",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/{{paymentsSubUrl}}/{{paymentID}}a/complete",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{paymentsSubUrl}}",
+										"{{paymentID}}a",
+										"complete"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Payment Refunds",
+					"item": [
+						{
+							"name": "Refund Payment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentJSONResponse = pm.response.json();",
+											"var moment = require('moment')",
+											"",
+											"pm.collectionVariables.set(\"refundID\",paymentJSONResponse.refund.id);",
+											"",
+											"pm.test(\"A refund with id: \" + paymentJSONResponse.refund.id + \" was successfully processed\", function(){",
+											"    pm.response.to.have.status(200);",
+											"})",
+											"",
+											"pm.test(\"Refund created_at json response matches with the date when refund was made\", function(){",
+											"    //console.log(moment.utc().format(\"YYYY-MM-DD\"));",
+											"    //console.log(paymentJSONResponse.refund.created_at.substring(-23,10));",
+											"    pm.expect(paymentJSONResponse.refund.created_at.substring(-23,10)).to.eql(moment.utc().format(\"YYYY-MM-DD\"));",
+											"})",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"amount_money\": {\n      \"amount\": {{amount}},\n      \"currency\": \"USD\"\n    },\n    \"idempotency_key\": \"{{idempotency}}\",\n    \"payment_id\": \"{{paymentID}}\",\n    \"reason\": \"It is a pleasure.\"\n  }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{refundsUrl}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{refundsUrl}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Specific Payment Refund",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentJSONResponse = pm.response.json();",
+											"",
+											"pm.test(\"A get refund with id: \" + paymentJSONResponse.refund.id + \" was successfully processed\", function(){",
+											"    pm.response.to.have.status(200);",
+											"})",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{refundsUrl}}/{{refundID}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{refundsUrl}}",
+										"{{refundID}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get List Of Refunds",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentJSONResponse = pm.response.json();",
+											"",
+											"pm.test(\"List of Payment Refunds displayed\", function(){",
+											"    pm.response.to.have.status(200);",
+											"})",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/{{refundsUrl}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{refundsUrl}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative - Refund With Higher Amount For Payment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var paymentFJSONResponse = pm.response.json();",
+											"var wrongRefundErrorMsg = \"The requested refund amount exceeds the amount available to refund. One or more refunds might have already been attempted for this payment.\";",
+											"",
+											"pm.test(\"Negative scenario when refund is higher for the amount of payment\", function(){",
+											"    pm.expect(paymentFJSONResponse.errors[0].detail).to.eql(wrongRefundErrorMsg);",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"var higherRefund = pm.collectionVariables.get(\"amount\") + 1;",
+											"",
+											"pm.collectionVariables.set(\"higherRefund1\",higherRefund);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"amount_money\": {\n      \"amount\": {{higherRefund1}},\n      \"currency\": \"USD\"\n    },\n    \"idempotency_key\": \"{{idempotency}}\",\n    \"payment_id\": \"{{paymentID}}\",\n    \"reason\": \"It is a pleasure.\"\n  }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/{{refundsUrl}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"{{refundsUrl}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "EAAAEHeMbezpnwukaDt84DirphFWeCGrwHJ1YoTmIwqtvTM7IsRgxLgexco5lCTj",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"pm.test(\"Response time is less than 1000ms\", () => {",
+					"  pm.expect(pm.response.responseTime).to.be.below(1000);",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "paymentID",
+			"value": "0"
+		},
+		{
+			"key": "amount",
+			"value": "0"
+		},
+		{
+			"key": "currency",
+			"value": "USD"
+		},
+		{
+			"key": "paymentErrorMsg",
+			"value": "Accept partial authorization not valid for autocomplete payments."
+		},
+		{
+			"key": "idempotency",
+			"value": "0"
+		},
+		{
+			"key": "originalPayment",
+			"value": "0"
+		},
+		{
+			"key": "tip",
+			"value": "0"
+		},
+		{
+			"key": "wrongID",
+			"value": "0"
+		},
+		{
+			"key": "higherRefund1",
+			"value": "0"
+		},
+		{
+			"key": "refundID",
+			"value": "0"
+		},
+		{
+			"key": "refundCreated",
+			"value": "0"
+		},
+		{
+			"key": "wrongPaymentID",
+			"value": "0"
+		},
+		{
+			"key": "wrongidempotency",
+			"value": "a"
+		}
+	]
+}
